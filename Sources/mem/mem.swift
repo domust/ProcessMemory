@@ -22,7 +22,10 @@ struct MemMain {
             return
         }
 
-        let addr = getBaseAddress(for: pid)
-        print(addr)
+        guard let memory = Memory.from(pid: pid) else {
+            return
+        }
+
+        print(memory)
     }
 }

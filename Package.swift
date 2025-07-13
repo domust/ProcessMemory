@@ -17,6 +17,17 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(name: "ProcessMemory"),
-        .executableTarget(name: "mem", dependencies: ["ProcessMemory"]),
+        .executableTarget(
+            name: "mem",
+            dependencies: ["ProcessMemory"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/Resources/Info.plist",
+                ])
+            ],
+        ),
     ]
 )

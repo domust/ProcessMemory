@@ -22,10 +22,11 @@ struct MemMain {
             return
         }
 
-        guard let memory = Memory.from(pid: pid) else {
-            return
+        switch Memory.from(pid: pid) {
+        case .success(let memory):
+            print(memory)
+        case .failure(let error):
+            print(error)
         }
-
-        print(memory)
     }
 }

@@ -2,6 +2,20 @@
 // https://docs.swift.org/swift-book
 import Darwin.Mach
 
+public enum MemoryError: Error {
+    case failure(String)
+    case unknown(Int32, String)
+}
+
+func error(_ code: Int32, function: String) -> MemoryError {
+    switch code {
+    case KERN_FAILURE:
+        return .failure(function)
+    default:
+        return .unknown(code, function)
+    }
+}
+
 /// Represents memory of a currently running process.
 ///
 /// Use `Memory` to read from or write to process memory.
@@ -13,12 +27,13 @@ public struct Memory: CustomStringConvertible {
     }
 
     /// Constructs `Memory` from a given process id.
-    public static func from(pid: pid_t) -> Memory? {
-        guard let addr = getBaseAddress(for: pid) else {
-            return nil
+    public static func from(pid: pid_t) -> Result<Memory, MemoryError> {
+        switch getBaseAddress(for: pid) {
+        case .success(let addr):
+            return .success(Memory(baseAddress: addr))
+        case .failure(let error):
+            return .failure(error)
         }
-
-        return Memory(baseAddress: addr)
     }
 
     init(baseAddress: mach_vm_address_t) {
@@ -26,11 +41,11 @@ public struct Memory: CustomStringConvertible {
     }
 }
 
-func getBaseAddress(for pid: pid_t) -> mach_vm_address_t? {
+func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {
     var task: mach_port_t = 0
     var result = task_for_pid(mach_task_self_, pid, &task)
     guard result == KERN_SUCCESS else {
-        return nil
+        return .failure(error(result, function: "task_for_pid"))
     }
 
     defer {
@@ -59,8 +74,8 @@ func getBaseAddress(for pid: pid_t) -> mach_vm_address_t? {
         }
     }
     guard result == KERN_SUCCESS else {
-        return nil
+        return .failure(error(result, function: "mach_vm_region_recurse"))
     }
 
-    return address
+    return .success(address)
 }

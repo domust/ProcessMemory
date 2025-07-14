@@ -26,6 +26,24 @@ public struct Memory: CustomStringConvertible {
         return "Memory(0x\(String(base, radix: 16)))"
     }
 
+    /// Constructs `Memory` from a given process name.
+    public static func from(name: String) -> Memory? {
+        guard let processes = getProcessList() else {
+            return nil
+        }
+
+        guard let pid = processes[name] else {
+            return nil
+        }
+
+        switch from(pid: pid) {
+        case .success(let memory):
+            return memory
+        case .failure(_):
+            return nil
+        }
+    }
+
     /// Constructs `Memory` from a given process id.
     public static func from(pid: pid_t) -> Result<Memory, MemoryError> {
         switch getBaseAddress(for: pid) {
@@ -78,4 +96,43 @@ func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {
     }
 
     return .success(address)
+}
+
+func getProcessList() -> [String: pid_t]? {
+    var mib = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+    var bufferSize = 0
+
+    // Set the required buffer size
+    if sysctl(&mib, UInt32(mib.count), nil, &bufferSize, nil, 0) < 0 {
+        perror(&errno)
+        return nil
+    }
+
+    let entryCount = bufferSize / MemoryLayout<kinfo_proc>.stride
+
+    var processList: UnsafeMutablePointer<kinfo_proc>?
+    processList = UnsafeMutablePointer.allocate(capacity: bufferSize)
+    defer { processList?.deallocate() }
+
+    if sysctl(&mib, UInt32(mib.count), processList, &bufferSize, nil, 0) < 0 {
+        perror(&errno)
+        return nil
+    }
+
+    var processMap = [String: pid_t]()
+    for index in 0...entryCount {
+        guard var process = processList?[index].kp_proc, process.p_pid != 0 else {
+            continue
+        }
+
+        let name = withUnsafePointer(to: &process.p_comm) {
+            $0.withMemoryRebound(to: UInt8.self, capacity: MemoryLayout.size(ofValue: $0)) {
+                String(cString: $0)
+            }
+        }
+
+        processMap[name] = process.p_pid
+    }
+
+    return processMap
 }

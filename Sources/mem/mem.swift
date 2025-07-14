@@ -1,3 +1,4 @@
+import ArgumentParser
 import ProcessMemory
 
 extension ArraySlice where Element: Comparable {
@@ -7,26 +8,18 @@ extension ArraySlice where Element: Comparable {
 }
 
 @main
-struct MemMain {
-    static func main() {
-        let args = CommandLine.arguments.dropFirst()
-        guard let pos = args.firstIndex(where: { $0 == "--pid" }) else {
-            return
-        }
+struct Mem: ParsableCommand {
+    @Option(name: .long, help: "The PID of the process.")
+    var pid: String? = nil
 
-        guard let stringOfPid = args.get(atIndex: pos + 1) else {
-            return
-        }
-
-        guard let pid = Int32(stringOfPid) else {
-            return
-        }
-
-        switch Memory.from(pid: pid) {
-        case .success(let memory):
-            print(memory)
-        case .failure(let error):
-            print(error)
+    mutating func run() {
+        if let pid, let pid = Int32(pid) {
+            switch Memory.from(pid: pid) {
+            case .success(let memory):
+                print(memory)
+            case .failure(let error):
+                print(error)
+            }
         }
     }
 }

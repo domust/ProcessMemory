@@ -21,6 +21,7 @@ func error(_ code: Int32, function: String) -> MemoryError {
 /// Use `Memory` to read from or write to process memory.
 public struct Memory: CustomStringConvertible {
     var base: mach_vm_address_t
+    var pid: pid_t
 
     public var description: String {
         return "Memory(0x\(String(base, radix: 16)))"
@@ -48,14 +49,15 @@ public struct Memory: CustomStringConvertible {
     public static func from(pid: pid_t) -> Result<Memory, MemoryError> {
         switch getBaseAddress(for: pid) {
         case .success(let addr):
-            return .success(Memory(baseAddress: addr))
+            return .success(Memory(baseAddress: addr, pid: pid))
         case .failure(let error):
             return .failure(error)
         }
     }
 
-    init(baseAddress: mach_vm_address_t) {
+    init(baseAddress: mach_vm_address_t, pid: pid_t) {
         self.base = baseAddress
+        self.pid = pid
     }
 }
 

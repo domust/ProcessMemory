@@ -1,6 +1,7 @@
 // The Swift Programming Language
 // https://docs.swift.org/swift-book
 import Darwin.Mach
+import Foundation
 
 public enum MemoryError: Error {
     case failure(String)
@@ -59,6 +60,10 @@ public struct Memory: CustomStringConvertible {
         self.base = baseAddress
         self.pid = pid
     }
+
+    public func readAt(offset: UInt64) -> Data? {
+        return readMemory(for: self.pid, from: self.base, at: offset, size: 32)
+    }
 }
 
 func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {
@@ -68,9 +73,7 @@ func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {
         return .failure(error(result, function: "task_for_pid"))
     }
 
-    defer {
-        mach_port_deallocate(mach_task_self_, task)
-    }
+    defer { mach_port_deallocate(mach_task_self_, task) }
 
     var address: mach_vm_address_t = 0
     var size: mach_vm_size_t = 0
@@ -137,4 +140,36 @@ func getProcessList() -> [String: pid_t]? {
     }
 
     return processMap
+}
+
+func readMemory(for pid: pid_t, from: mach_vm_address_t, at: mach_vm_offset_t, size: mach_vm_size_t)
+    -> Data?
+{
+    var task: mach_port_t = 0
+    var result = task_for_pid(mach_task_self_, pid, &task)
+    guard result == KERN_SUCCESS else {
+        return nil
+    }
+
+    defer { mach_port_deallocate(mach_task_self_, task) }
+
+    var dataPointer: vm_offset_t = 0
+    var dataSize: mach_msg_type_number_t = 0
+
+    result = withUnsafeMutablePointer(to: &dataPointer) { dataPtr in
+        withUnsafeMutablePointer(to: &dataSize) { sizePtr in
+            vm_read(task, vm_address_t(from + at), vm_size_t(size), dataPtr, sizePtr)
+        }
+    }
+    guard result == KERN_SUCCESS else {
+        return nil
+    }
+
+    defer { vm_deallocate(mach_task_self_, dataPointer, vm_size_t(dataSize)) }
+
+    guard let rawPointer = UnsafeRawPointer(bitPattern: UInt(dataPointer)) else {
+        return nil
+    }
+
+    return Data(bytes: rawPointer, count: Int(dataSize))
 }

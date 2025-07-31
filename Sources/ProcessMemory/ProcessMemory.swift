@@ -64,6 +64,10 @@ public struct Memory: CustomStringConvertible {
     public func readAt(offset: UInt64) -> Data? {
         return readMemory(for: self.pid, from: self.base, at: offset, size: 32)
     }
+
+    public func move(offset: UInt64) -> Memory {
+        return Memory(baseAddress: self.base + offset, pid: self.pid)
+    }
 }
 
 func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {

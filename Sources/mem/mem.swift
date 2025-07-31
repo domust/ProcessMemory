@@ -35,6 +35,8 @@ struct Mem: ParsableCommand {
     var pid: String? = nil
     @Option(name: .long, help: "The memory offset for reading.")
     var offset: Offset?
+    @Option(name: .long, help: "The memory offset for all subsequent operations.")
+    var move: Offset?
 
     mutating func run() {
         var memory: Memory?
@@ -57,11 +59,15 @@ struct Mem: ParsableCommand {
             }
         }
 
-        guard let memory else {
+        guard var memory else {
             return
         }
 
         print(memory)
+
+        if let move {
+            memory = memory.move(offset: move.value)
+        }
 
         if let offset {
             guard let data = memory.readAt(offset: offset.value) else {

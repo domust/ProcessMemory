@@ -68,12 +68,8 @@ public struct Memory: CustomStringConvertible {
         self.pid = pid
     }
 
-    public func readAt(offset: UInt64) -> Data? {
-        return readMemory(for: self.pid, from: self.base, at: offset, size: 32)
-    }
-
     public func deref(offset: UInt64) -> Memory? {
-        guard let data = self.readAt(offset: offset) else {
+        guard let data = readMemory(for: self.pid, from: self.base, at: offset, size: 32) else {
             return nil
         }
 
@@ -86,6 +82,14 @@ public struct Memory: CustomStringConvertible {
 
     public func move(offset: UInt64) -> Memory {
         return Memory(baseAddress: self.base + offset, pid: self.pid)
+    }
+
+    public func readInt(offset: UInt64) -> Int32? {
+        guard let data = readMemory(for: self.pid, from: self.base, at: offset, size: 32) else {
+            return nil
+        }
+
+        return data.toInt(type: Int32.self)
     }
 }
 

@@ -8,13 +8,6 @@ extension ArraySlice where Element: Comparable {
     }
 }
 
-extension Data {
-    func toInt<T: FixedWidthInteger>(type: T.Type) -> T? {
-        guard self.count >= MemoryLayout<T>.size else { return nil }
-        return self.withUnsafeBytes { $0.load(as: T.self) }
-    }
-}
-
 struct Offset: ExpressibleByArgument {
     let value: UInt64
 
@@ -82,11 +75,7 @@ struct Mem: ParsableCommand {
         }
 
         if let offset {
-            guard let data = memory.readAt(offset: offset.value) else {
-                return
-            }
-
-            guard let value = data.toInt(type: Int32.self) else {
+            guard let value = memory.readInt(offset: offset.value) else {
                 return
             }
 

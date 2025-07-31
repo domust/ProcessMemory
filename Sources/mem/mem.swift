@@ -37,6 +37,8 @@ struct Mem: ParsableCommand {
     var offset: Offset?
     @Option(name: .long, help: "The memory offset for all subsequent operations.")
     var move: Offset?
+    @Option(name: .long, help: "The memory offset to dereference the pointer.")
+    var deref: Offset?
 
     mutating func run() {
         var memory: Memory?
@@ -67,6 +69,16 @@ struct Mem: ParsableCommand {
 
         if let move {
             memory = memory.move(offset: move.value)
+            print(memory)
+        }
+
+        if let deref {
+            guard let newMemory = memory.deref(offset: deref.value) else {
+                return
+            }
+
+            memory = newMemory
+            print(memory)
         }
 
         if let offset {

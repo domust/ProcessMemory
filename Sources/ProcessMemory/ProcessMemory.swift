@@ -17,6 +17,13 @@ func error(_ code: Int32, function: String) -> MemoryError {
     }
 }
 
+extension Data {
+    func toInt<T: FixedWidthInteger>(type: T.Type) -> T? {
+        guard self.count >= MemoryLayout<T>.size else { return nil }
+        return self.withUnsafeBytes { $0.load(as: T.self) }
+    }
+}
+
 /// Represents memory of a currently running process.
 ///
 /// Use `Memory` to read from or write to process memory.
@@ -63,6 +70,18 @@ public struct Memory: CustomStringConvertible {
 
     public func readAt(offset: UInt64) -> Data? {
         return readMemory(for: self.pid, from: self.base, at: offset, size: 32)
+    }
+
+    public func deref(offset: UInt64) -> Memory? {
+        guard let data = self.readAt(offset: offset) else {
+            return nil
+        }
+
+        guard let pointer = data.toInt(type: UInt64.self) else {
+            return nil
+        }
+
+        return Memory(baseAddress: pointer, pid: self.pid)
     }
 
     public func move(offset: UInt64) -> Memory {

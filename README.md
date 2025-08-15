@@ -13,13 +13,9 @@ import, so none of the functions can actually be invoked.
 
 The command to use for testing is:
 ```shell
-$ swift build && sudo .build/debug/mem --pid [pid]
+$ ./build.sh && .build/debug/mem --pid [pid]
 ```
-Without sudo, mem fails to get task for pid. And even with sudo it works
-only on other processes that have been spawned from the command line.
-Embedding Info.plist into the binary did not lift the requirements for sudo,
-because those require signing the executable with Apple Developer Certificate
-for entitlements, because they can only be added after the binary is built.
+which will prompt for developer tools access
 
 ## Debugging
 

@@ -38,10 +38,10 @@ struct Mem: ParsableCommand {
 
         if let name {
             switch Memory.from(name: name) {
-            case .some(let mem):
+            case .success(let mem):
                 memory = mem
-            case .none:
-                print("process \(name) not found")
+            case .failure(let error):
+                print("process \(name): \(error)")
             }
         }
 

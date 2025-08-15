@@ -36,21 +36,20 @@ public struct Memory: CustomStringConvertible {
     }
 
     /// Constructs `Memory` from a given process name.
-    public static func from(name: String) -> Memory? {
-        guard let processes = getProcessList() else {
-            return nil
+    public static func from(name: String) -> Result<Memory, MemoryError> {
+        var processes: [String: pid_t]
+        switch getProcessList() {
+        case .success(let value):
+            processes = value
+        case .failure(let error):
+            return .failure(error)
         }
 
         guard let pid = processes[name] else {
-            return nil
+            return .failure(.failure("process map access"))
         }
 
-        switch from(pid: pid) {
-        case .success(let memory):
-            return memory
-        case .failure(_):
-            return nil
-        }
+        return from(pid: pid)
     }
 
     /// Constructs `Memory` from a given process id.
@@ -130,14 +129,13 @@ func getBaseAddress(for pid: pid_t) -> Result<mach_vm_address_t, MemoryError> {
     return .success(address)
 }
 
-func getProcessList() -> [String: pid_t]? {
+func getProcessList() -> Result<[String: pid_t], MemoryError> {
     var mib = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
     var bufferSize = 0
 
     // Set the required buffer size
     if sysctl(&mib, UInt32(mib.count), nil, &bufferSize, nil, 0) < 0 {
-        perror(&errno)
-        return nil
+        return .failure(.unknown(errno, "set buffer size"))
     }
 
     let entryCount = bufferSize / MemoryLayout<kinfo_proc>.stride
@@ -147,8 +145,7 @@ func getProcessList() -> [String: pid_t]? {
     defer { processList?.deallocate() }
 
     if sysctl(&mib, UInt32(mib.count), processList, &bufferSize, nil, 0) < 0 {
-        perror(&errno)
-        return nil
+        return .failure(.unknown(errno, "list processes"))
     }
 
     var processMap = [String: pid_t]()
@@ -166,7 +163,7 @@ func getProcessList() -> [String: pid_t]? {
         processMap[name] = process.p_pid
     }
 
-    return processMap
+    return .success(processMap)
 }
 
 func readMemory(for pid: pid_t, from: mach_vm_address_t, at: mach_vm_offset_t, size: mach_vm_size_t)
